@@ -1,6 +1,6 @@
 # Real-Time Payments Streaming Platform
 
-A portfolio-ready **fintech data engineering project** that simulates real-time payment transactions, processes them with a streaming engine, flags suspicious activity, and exposes live alerts through a dashboard and database.
+A **fintech data engineering project** that simulates real-time payment transactions, processes them with a streaming engine, flags suspicious activity, and exposes live alerts through a dashboard and database.
 
 This project is designed to showcase **data engineering, streaming, and cloud skills** for internships at banks, fintechs, and data-heavy companies.
 

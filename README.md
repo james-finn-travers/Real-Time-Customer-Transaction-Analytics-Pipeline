@@ -35,7 +35,7 @@ This project is designed to showcase **data engineering, streaming, and cloud sk
 
 ---
 
-## 🚀 Features (MVP Scope)
+## 🚀 Features
 
 - Synthetic **payment transaction generator**:
   - Fields such as `transaction_id`, `user_id`, `amount`, `currency`, `merchant_id`, `timestamp`, `location`.

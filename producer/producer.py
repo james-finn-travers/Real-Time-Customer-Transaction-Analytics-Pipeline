@@ -140,7 +140,6 @@ def create_producer() -> KafkaProducer:
         compression_type="lz4",
         buffer_memory=64 * 1024 * 1024,       # 64 MB
         max_in_flight_requests_per_connection=5,
-        enable_idempotence=True,
     )
 
 

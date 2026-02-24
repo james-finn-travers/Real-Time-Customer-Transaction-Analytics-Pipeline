@@ -2,8 +2,6 @@
 
 A **production-grade data engineering project** that ingests 10k+ synthetic e-commerce transactions per second, processes them through a real-time streaming engine with anomaly detection, persists results to MongoDB (time-series), and serves live analytics via a FastAPI backend and Streamlit dashboard — designed for Azure deployment.
 
-> **Resume line:** *"Engineered scalable transaction pipeline handling 10k/sec on Azure with sub-50ms p99 latency and 99.9% uptime."*
-
 ---
 
 ## Architecture
@@ -183,23 +181,6 @@ Open [http://localhost:8080](http://localhost:8080) → Topics → `transactions
 pip install -r requirements/consumer.txt
 python -m consumers.db_sink
 ```
-
----
-
-## Roadmap
-
-| Week | Focus | Milestone |
-|------|-------|-----------|
-| **1 (Mar 2)** | **Ingest Foundation** | **✅ Produce/consume 1k txns/sec locally** |
-| 2 (Mar 9) | Stream Processing | Enriched output stream with aggregates |
-| 3 (Mar 16) | Persistence | Queryable MongoDB data (top spenders) |
-| 4 (Mar 23) | API + Dashboard | Live queries & dashboard from data |
-| 5 (Mar 30) | Deploy | Public Azure endpoint |
-| 6 (Apr 6) | Testing | 80% coverage, benchmarks logged |
-| 7-8 (Apr 13) | Documentation | Recruiter-ready repo + demo video |
-| 9 (Apr 27) | Buffer/Stretch | Redis cache, resume integration |
-
----
 
 ## License
 

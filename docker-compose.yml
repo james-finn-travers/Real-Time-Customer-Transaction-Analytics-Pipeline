@@ -115,7 +115,7 @@ services:
       KAFKA_ANOMALY_TOPIC: anomalies
       MONGO_URI: "mongodb://mongo:27017"
       MONGO_DB: txn_analytics
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
     networks:
       - txn-network
 
@@ -243,7 +243,7 @@ services:
       context: .
       dockerfile: airflow/Dockerfile.airflow
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
       - AIRFLOW__CORE__LOAD_EXAMPLES=false
     volumes:

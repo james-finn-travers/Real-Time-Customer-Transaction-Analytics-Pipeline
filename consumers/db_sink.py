@@ -12,10 +12,11 @@ import json
 import signal
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from kafka import KafkaConsumer
 from pymongo import MongoClient, UpdateOne, ASCENDING
-from pymongo.errors import BulkWriteError
+from pymongo.errors import BulkWriteError, DuplicateKeyError
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -80,14 +81,33 @@ def ensure_collections(db):
         logger.info("Created time-series collection: %s", ANOMALY_COLLECTION)
 
     # Secondary indexes for fast queries
-    db[TXN_COLLECTION].create_index([("txn_id", ASCENDING)], unique=True, sparse=True)
+    try:
+        db[TXN_COLLECTION].create_index([("txn_id", ASCENDING)], unique=True, sparse=True)
+    except Exception as exc:
+        logger.warning(
+            "Unique or sparse index not supported for time-series collection %s: %s; creating non-unique, non-sparse index",
+            TXN_COLLECTION,
+            exc,
+        )
+        db[TXN_COLLECTION].create_index([("txn_id", ASCENDING)], unique=False)
+
     db[TXN_COLLECTION].create_index([("merchant_id", ASCENDING)])
     db[TXN_COLLECTION].create_index([("merchant_category", ASCENDING)])
-    db[ANOMALY_COLLECTION].create_index([("txn_id", ASCENDING)], unique=True, sparse=True)
+
+    try:
+        db[ANOMALY_COLLECTION].create_index([("txn_id", ASCENDING)], unique=True, sparse=True)
+    except Exception as exc:
+        logger.warning(
+            "Unique or sparse index not supported for time-series collection %s: %s; creating non-unique, non-sparse index",
+            ANOMALY_COLLECTION,
+            exc,
+        )
+        db[ANOMALY_COLLECTION].create_index([("txn_id", ASCENDING)], unique=False)
+
     db[ANOMALY_COLLECTION].create_index([("z_score", ASCENDING)])
 
 
-def _parse_record(raw_value: bytes) -> dict | None:
+def _parse_record(raw_value: bytes) -> Optional[dict]:
     try:
         record = json.loads(raw_value.decode("utf-8"))
         # Convert ISO timestamp string to datetime for MongoDB time-series
@@ -100,25 +120,24 @@ def _parse_record(raw_value: bytes) -> dict | None:
 
 
 def upsert_batch(collection, batch: list[dict]):
-    """Idempotent upsert batch using txn_id as the natural key."""
+    """Insert batch into time-series collection, ignoring duplicates."""
     if not batch:
         return
-    ops = [
-        UpdateOne({"txn_id": doc["txn_id"]}, {"$set": doc}, upsert=True)
-        for doc in batch
-        if "txn_id" in doc
-    ]
+    docs = [doc for doc in batch if "txn_id" in doc]
+    if not docs:
+        return
     try:
-        result = collection.bulk_write(ops, ordered=False)
-        logger.debug(
-            "Upserted %d (matched=%d, modified=%d, inserted=%d)",
-            len(ops),
-            result.matched_count,
-            result.modified_count,
-            result.upserted_count,
-        )
+        result = collection.insert_many(docs, ordered=False)
+        logger.debug("Inserted %d documents", len(result.inserted_ids))
     except BulkWriteError as bwe:
-        logger.error("Bulk write error: %s", bwe.details)
+        # Time-series collections raise BulkWriteError on duplicates
+        # Extract successful inserts from the error details
+        if bwe.details and "writeErrors" in bwe.details:
+            inserted = len(docs) - len(bwe.details["writeErrors"])
+            logger.debug("Inserted %d documents (ignored %d duplicates)",
+                        inserted, len(bwe.details["writeErrors"]))
+        else:
+            logger.error("Bulk write error: %s", bwe.details)
 
 
 # ---------------------------------------------------------------------------

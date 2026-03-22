@@ -248,7 +248,9 @@ def fetch_recent_anomalies(days: int, limit: int = 20) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Formatting helpers
 # ---------------------------------------------------------------------------
-def _fmt_number(n: int | float) -> str:
+from typing import Union
+
+def _fmt_number(n: Union[int, float]) -> str:
     if n >= 1_000_000:
         return f"{n / 1_000_000:.1f}M"
     if n >= 1_000:

@@ -13,9 +13,11 @@ Requires: Apache Flink 1.18+, PyFlink, kafka-connector JAR.
 import os
 import json
 import logging
+from datetime import datetime
 
 from pyflink.common import Types, WatermarkStrategy, Duration
 from pyflink.common.serialization import SimpleStringSchema
+from pyflink.common.watermark_strategy import TimestampAssigner
 from pyflink.datastream import StreamExecutionEnvironment, RuntimeExecutionMode
 from pyflink.datastream.connectors.kafka import (
     KafkaSource,
@@ -55,6 +57,38 @@ logger = logging.getLogger("txn-processor")
 # ---------------------------------------------------------------------------
 # UDFs
 # ---------------------------------------------------------------------------
+def extract_timestamp(txn):
+    """Extract event timestamp from transaction for Flink event time (ms)."""
+    ts = txn.get("timestamp")
+    if ts is None:
+        return 0
+    if isinstance(ts, (int, float)):
+        return int(ts * 1000)
+    if isinstance(ts, str):
+        try:
+            return int(datetime.fromisoformat(ts).timestamp() * 1000)
+        except ValueError:
+            return 0
+    return 0
+
+
+class TransactionTimestampAssigner(TimestampAssigner):
+    """Custom timestamp assigner to use event-time timestamps from transactions."""
+
+    def extract_timestamp(self, txn, record_timestamp) -> int:
+        return extract_timestamp(txn)
+
+
+class JsonSerializer(MapFunction):
+    """Convert a Python object into JSON string for Kafka sink."""
+
+    def map(self, value):
+        return json.dumps(value)
+
+    def get_result_type(self):
+        return Types.STRING()
+
+
 class ParseTransaction(MapFunction):
     """Deserialise JSON string into a Python dict."""
 
@@ -157,7 +191,7 @@ def build_pipeline():
         .set_bootstrap_servers(KAFKA_BOOTSTRAP)
         .set_topics(SOURCE_TOPIC)
         .set_group_id(CONSUMER_GROUP)
-        .set_starting_offsets(KafkaOffsetsInitializer.latest())
+        .set_starting_offsets(KafkaOffsetsInitializer.earliest())
         .set_value_only_deserializer(SimpleStringSchema())
         .build()
     )
@@ -168,14 +202,14 @@ def build_pipeline():
 
     # --- Parse JSON ---
     parsed = raw_stream.map(ParseTransaction()).filter(lambda x: x is not None)
-    
-    watermarked = parsed.assign_timestamps_and_watermarks(
-        WatermarkStrategy
-        .for_bounded_out_of_orderness(Duration.of_seconds(5))
-        .with_timestamp_assigner(
-            lambda txn, _: int(txn.get("timestamp",0)*1000)
-        )
+
+    # Assign timestamps + watermarks using event-time timestamp from payload
+    watermark_strategy = (
+        WatermarkStrategy.for_bounded_out_of_orderness(Duration.of_seconds(5))
+        .with_timestamp_assigner(TransactionTimestampAssigner())
     )
+
+    watermarked = parsed.assign_timestamps_and_watermarks(watermark_strategy)
 
     # --- Anomaly detection (keyed by user_id) ---
     enriched = (
@@ -204,7 +238,7 @@ def build_pipeline():
         )
         .build()
     )
-    daily_spend.map(lambda agg: json.dumps(agg)).sink_to(daily_spend_sink)    
+    daily_spend.map(JsonSerializer()).sink_to(daily_spend_sink)    
 
     # --- Kafka sink for enriched events ---
     enriched_sink = (
@@ -218,7 +252,7 @@ def build_pipeline():
         )
         .build()
     )
-    enriched.map(lambda txn: json.dumps(txn)).sink_to(enriched_sink)
+    enriched.map(JsonSerializer()).sink_to(enriched_sink)
 
     # --- Anomaly branch → separate topic ---
     anomalies = enriched.filter(lambda txn: txn.get("is_anomaly", False))
@@ -234,7 +268,7 @@ def build_pipeline():
         )
         .build()
     )
-    anomalies.map(lambda txn: json.dumps(txn)).sink_to(anomaly_sink)
+    anomalies.map(JsonSerializer()).sink_to(anomaly_sink)
 
     logger.info(
         "Pipeline built: %s → parse → anomaly detect → %s / %s",

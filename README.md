@@ -71,6 +71,73 @@ flowchart LR
 
 ---
 
+## Infrastructure & Deployment
+
+### Local Development (Docker Compose)
+
+**Recommended for development and testing** - Full local orchestration with 14 services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| `zookeeper` | 2181 | Kafka coordination |
+| `kafka` | 9092 / 29092 | Event broker |
+| `kafka-ui` | 8080 | Kafka topic browser |
+| `mongo` | 27017 | MongoDB 7.0 time-series |
+| `producer` | — | Faker transaction generator |
+| `consumer` | — | Enriched txn + anomaly sink |
+| `daily-spend-consumer` | — | Daily spend aggregate sink |
+| `api` | 8000 | FastAPI REST endpoints |
+| `flink-jobmanager` | 8081 (Flink UI) | Flink cluster manager |
+| `flink-taskmanager` | — | Flink worker |
+| `flink-job-submit` | — | Submits PyFlink job |
+| `airflow-webserver` | 8081 | Airflow UI & scheduler |
+| `dashboard` | 8501 | Streamlit live dashboard |
+
+```bash
+# Start all services
+docker compose up -d
+
+# View dashboard at http://localhost:8501
+# View API docs at http://localhost:8000/docs
+# View Airflow at http://localhost:8081
+```
+
+### Cloud Deployment (Terraform + AKS)
+
+**Enterprise-grade Kubernetes deployment** to Azure AKS for production workloads:
+
+- **AKS Cluster**: Auto-scaling Kubernetes cluster (1-5 nodes)
+- **Azure Container Registry**: Private image repository
+- **Helm Charts**: Kafka and MongoDB deployments
+- **Horizontal Pod Autoscaling**: CPU-based scaling for API and consumer services
+- **Azure Premium SSD**: Persistent storage for stateful workloads
+- **Network Security**: Custom VNet with isolated subnets
+
+```bash
+cd terraform
+
+# Initialize and deploy
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+
+# Get cluster credentials
+az aks get-credentials --resource-group $(terraform output -raw resource_group_name) --name $(terraform output -raw aks_cluster_name)
+```
+
+**Cost-optimized for portfolio projects**: $5-10/demo session, $50-60/month always-on.
+
+### Recent Infrastructure Updates
+
+- **2026-03-22**: Refactored Terraform configuration files
+  - Renamed `kubernetes-main.tf` → `main.tf`
+  - Renamed `kubernetes-variables.tf` → `variables.tf`
+  - Renamed `kubernetes-outputs.tf` → `outputs.tf`
+  - Updated all documentation references
+  - Streamlined file structure for cleaner naming conventions
+
+---
+
 ## Features
 
 - **High-throughput transaction generator** — 10k+ txns/sec with Faker:

@@ -21,6 +21,7 @@ import json
 import signal
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from kafka import KafkaConsumer
 from pymongo import MongoClient, UpdateOne, ASCENDING, DESCENDING
@@ -76,7 +77,7 @@ def ensure_collection(db):
     col.create_index([("user_id", ASCENDING)], name="ix_user_id")
 
 
-def _parse_record(raw_value: bytes) -> dict | None:
+def _parse_record(raw_value: bytes) -> Optional[dict]:
     """Parse a raw Kafka value into a dict, converting epoch-ms timestamps."""
     try:
         record = json.loads(raw_value.decode("utf-8"))

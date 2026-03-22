@@ -1,0 +1,41 @@
+replicaCount: 3
+
+persistence:
+  enabled: true
+  storageClass: "${storage_class}"
+  size: 20Gi
+
+broker:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+zookeeper:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    storageClass: "${storage_class}"
+    size: 10Gi
+
+metrics:
+  kafka:
+    enabled: true
+
+auth:
+  sasl:
+    enabled: false
+
+listeners:
+  client:
+    protocol: PLAINTEXT
+  controller:
+    protocol: PLAINTEXT
+  inter_broker:
+    protocol: PLAINTEXT
+  external:
+    protocol: PLAINTEXT

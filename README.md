@@ -127,17 +127,6 @@ az aks get-credentials --resource-group $(terraform output -raw resource_group_n
 
 **Cost-optimized for portfolio projects**: $5-10/demo session, $50-60/month always-on.
 
-### Recent Infrastructure Updates
-
-- **2026-03-22**: Refactored Terraform configuration files
-  - Renamed `kubernetes-main.tf` → `main.tf`
-  - Renamed `kubernetes-variables.tf` → `variables.tf`
-  - Renamed `kubernetes-outputs.tf` → `outputs.tf`
-  - Updated all documentation references
-  - Streamlined file structure for cleaner naming conventions
-
----
-
 ## Features
 
 - **High-throughput transaction generator** — 10k+ txns/sec with Faker:
